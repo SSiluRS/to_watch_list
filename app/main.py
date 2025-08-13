@@ -1,13 +1,11 @@
 from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.staticfiles import StaticFiles
-from typing import Optional, List
+from typing import Optional
 import json
 
 from .db import get_conn
-from .auth import create_token, parse_token, hash_password, verify_password
+from .auth import create_token, parse_token, hash_password, verify_password, rehash_if_needed
 from .schemas import RegisterIn, LoginIn, ListCreate, ItemCreate, ItemPatch, ShareIn, RenameListIn
 
 app = FastAPI(title="ToWatchList API")
@@ -29,24 +27,26 @@ def get_user_id(creds: Optional[HTTPAuthorizationCredentials] = Depends(security
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-# Раздача фронта
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
-
 # --------- AUTH ----------
 @app.post("/register")
 def register(body: RegisterIn):
     with get_conn() as conn:
         cur = conn.cursor(dictionary=True)
-        # Проверка уникальности
         cur.execute("SELECT id FROM users WHERE username=%s", (body.username,))
         if cur.fetchone():
             raise HTTPException(status_code=400, detail="Username already exists")
+
         cur.execute(
             "INSERT INTO users (username, password) VALUES (%s, %s)",
             (body.username, hash_password(body.password))
         )
         conn.commit()
-    return {"message": "User registered"}
+        user_id = cur.lastrowid
+
+    token = create_token(user_id)
+    # фронт после регистрации сразу кладёт token/user_id в localStorage
+    return {"message": "User registered", "user_id": user_id, "token": token}
+
 
 @app.post("/login")
 def login(body: LoginIn):
@@ -56,8 +56,13 @@ def login(body: LoginIn):
         row = cur.fetchone()
         if not row or not verify_password(body.password, row["password"]):
             raise HTTPException(status_code=401, detail="Invalid username or password")
+
+        # Автоматическая миграция пароля в bcrypt
+        rehash_if_needed(row["id"], body.password, row["password"])
+
         token = create_token(row["id"])
         return {"message": "Login successful", "user_id": row["id"], "token": token}
+
 
 @app.get("/auth-check")
 def auth_check(user_id: int = Depends(get_user_id)):
@@ -239,3 +244,8 @@ async def log_event(request: Request, user_id: Optional[int] = Depends(get_user_
         cur.execute("INSERT INTO logs (event, data, user_id) VALUES (%s,%s,%s)", (event, payload, user_id or 0))
         conn.commit()
     return {"message": "Log entry saved"}
+
+
+from fastapi.staticfiles import StaticFiles
+# Раздача фронта
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

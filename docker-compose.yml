@@ -5,6 +5,9 @@ services:
     env_file: .env
     ports:
       - "3367:8000"  # внешний порт 3367 -> внутренний 8000 (uvicorn)
+      - "5678:5678"    # порт для debugpy
     volumes:
       - ./frontend:/app/frontend:ro
     restart: unless-stopped
+    environment:
+        - DEBUG=1
