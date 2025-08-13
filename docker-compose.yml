@@ -1,0 +1,27 @@
+version: "3.9"
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-to_watch_list}
+      MYSQL_USER: ${MYSQL_USER:-to_watch_list}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-pass}
+      MYSQL_ROOT_PASSWORD: rootpass
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - dbdata:/var/lib/mysql
+    ports:
+      - "3307:3306"  # наружный порт можно поменять
+
+  app:
+    build: .
+    env_file: .env
+    depends_on:
+      - db
+    ports:
+      - "3367:8000"   # внешний 3367 как в исходнике
+    volumes:
+      - ./frontend:/app/frontend:ro
+
+volumes:
+  dbdata:

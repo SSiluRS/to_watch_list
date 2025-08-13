@@ -1,0 +1,33 @@
+# Ignore git repository
+.git
+.gitignore
+
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore local virtual env
+venv/
+.env
+.env.*
+
+# Ignore test data
+tests/
+*.log
+*.sql
+*.sql.gz
+
+# Ignore build artifacts
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Docker-specific
+Dockerfile
+docker-compose.yml

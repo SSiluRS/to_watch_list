@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Watch List</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <section id="auth-section">
+      <h2>Вход или регистрация</h2>
+      <form id="auth-form">
+        <input type="text" id="username" placeholder="Имя пользователя" required>
+        <input type="password" id="password" placeholder="Пароль" required>
+        <button type="submit">Войти / Зарегистрироваться</button>
+      </form>
+      <div id="auth-message"></div>
+    </section>
+
+    <section id="main-section" style="display:none;">
+      <header>
+        <h1>Мои списки к просмотру</h1>
+        <button id="logoutBtn">Выйти</button>
+      </header>
+
+      <section id="add-list">
+        <input type="text" id="newListName" placeholder="Название списка">
+        <button id="createListBtn">Создать список</button>
+      </section>
+
+      <section id="lists-container">
+        <h2>Ваши списки</h2>
+        <ul id="userLists"></ul>
+
+        <h2 id="sharedTitle" style="display: none;">Поделились с вами</h2>
+        <ul id="sharedLists"></ul>
+      </section>
+
+      <section id="items-container" style="display: none;">
+        <div class="header">
+          <img src="/img/left.png" alt="Назад" id="backToLists" />
+          <h2 id="selectedListTitle"></h2>
+        </div>
+        <button id="addItemBtn">Добавить элемент</button>
+        <ul id="itemsList"></ul>
+      </section>
+
+      <section id="search-container" style="display: none;">
+        <input type="text" id="movieSearchInput" placeholder="Введите название...">
+        <button id="searchMovieBtn">Найти</button>
+        <ul id="searchResults"></ul>
+      </section>
+    </section>
+  </div>
+
+  <script>
+    const apiUrl = "";
+    let token = localStorage.getItem("token") || "";
+    let currentListId = null;
+
+    function show(el) {
+      el.style.display = "";
+    }
+    function hide(el) {
+      el.style.display = "none";
+    }
+
+    async function authCheck() {
+      const res = await fetch("/auth-check", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        show(document.getElementById("main-section"));
+        hide(document.getElementById("auth-section"));
+        fetchLists();
+      }
+    }
+
+    document.getElementById("auth-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        token = data.token;
+        localStorage.setItem("token", token);
+        authCheck();
+      } else {
+        document.getElementById("auth-message").innerText = data.error;
+      }
+    });
+
+    document.getElementById("logoutBtn").onclick = () => {
+      localStorage.removeItem("token");
+      location.reload();
+    };
+
+    document.getElementById("createListBtn").onclick = async () => {
+      const name = document.getElementById("newListName").value;
+      if (!name) return;
+      await fetch("/lists", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name }),
+      });
+      document.getElementById("newListName").value = "";
+      fetchLists();
+    };
+
+    async function fetchLists() {
+      const res = await fetch("/lists", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const lists = await res.json();
+      const ul = document.getElementById("userLists");
+      ul.innerHTML = "";
+      lists.forEach((l) => {
+        const li = document.createElement("li");
+        li.innerText = l.name;
+        li.onclick = () => openList(l.id, l.name);
+        ul.appendChild(li);
+      });
+    }
+
+    async function openList(id, name) {
+      currentListId = id;
+      document.getElementById("selectedListTitle").innerText = name;
+      show(document.getElementById("items-container"));
+      fetchItems();
+    }
+
+    async function fetchItems() {
+      const res = await fetch(`/items?list_id=${currentListId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const items = await res.json();
+      const ul = document.getElementById("itemsList");
+      ul.innerHTML = "";
+      items.forEach((item) => {
+        const li = document.createElement("li");
+        li.innerText = item.title;
+        ul.appendChild(li);
+      });
+    }
+
+    document.getElementById("backToLists").onclick = () => {
+      hide(document.getElementById("items-container"));
+    };
+
+    window.onload = authCheck;
+  </script>
+</body>
+</html>
