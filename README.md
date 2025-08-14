@@ -85,42 +85,15 @@ package.json
 ### Dev (раздельно)
 ```bash
 # Backend
-cd to_watch_list
+cd back
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # Frontend
-cd to_watch_list_front
+cd front
 npm ci
 npm run dev
 ```
 Открыть: `http://<front-ip>:<front-port>`
-
----
-
-### Prod (единый origin)
-```bash
-# Сборка фронта
-cd to_watch_list_front
-npm ci && npm run build
-
-# Копирование dist в backend
-cp -r dist/* ../to_watch_list/frontend/
-
-# Запуск бэкенда
-cd ../to_watch_list
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
----
-
-### Docker
-```bash
-cd to_watch_list
-docker-compose up --build -d
-```
-По умолчанию публикуется на `3367:8000`.
-
----
 
 ## 🌐 Публичные эндпоинты API
 
@@ -141,25 +114,9 @@ docker-compose up --build -d
 - **Пароли**: поддержка старых werkzeug-хэшей, пересчёт в bcrypt при логине
 - **Kinopoisk-прокси**: ключ хранится на сервере, не передаётся на фронт
 - **Reset-токены**: хэширование с pepper, TTL
-- **CORS**: включается только в DEV при разных origin
 
----
-
-## 🛠 Диагностика типовых проблем
-| Симптом                    | Возможная причина                        |
-|----------------------------|-------------------------------------------|
-| HTML вместо JSON           | Запрос уходит на фронт, а не на API       |
-| ECONNREFUSED               | Неверный порт/адрес или сервис не запущен |
-| CORS error                 | Разные origin без прокси                  |
-| Ошибки Vite (ESM/Node)     | Node < 20, повреждён `node_modules`       |
-
----
 
 ## 📄 Лицензия
 MIT License
 
 ---
-
-## 🔗 Репозитории
-- Backend: [github.com/SSiluRS/to_watch_list](https://github.com/SSiluRS/to_watch_list)
-- Frontend: [github.com/SSiluRS/to_watch_list_front](https://github.com/SSiluRS/to_watch_list_front)
