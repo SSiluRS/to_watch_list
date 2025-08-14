@@ -1,3 +1,5 @@
+# This workflow builds and publishes a Docker image to GitHub Container Registry (GHCR)
+# when changes are pushed to the main branch.
 name: Publish Docker image
 
 on:
@@ -28,4 +30,7 @@ jobs:
           context: .
           file: back/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/to_watch_list:latest
+          tags: ghcr.io/${{ toLower(github.repository_owner) }}/to_watch_list:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          provenance: false
