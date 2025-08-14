@@ -82,3 +82,8 @@ pnpm-debug.log*
 # ОС
 .DS_Store
 Thumbs.db
+
+scripts/
+
+.gitignore/
+.git/

@@ -1,32 +1,89 @@
-# Ignore git repository
-.git
-.gitignore
-
-# Ignore Python cache
+# Byte-compiled / optimized files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Ignore local virtual env
+# Virtual environment
 venv/
 .env
 .env.*
 
-# Ignore test data
-tests/
+# PyInstaller
+*.spec
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
 *.log
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+coverage.*
+.cache
+.pytest_cache/
+
+# MySQL dumps
 *.sql
 *.sql.gz
 
-# Ignore build artifacts
-build/
-dist/
-.eggs/
-*.egg-info/
+# Docker volumes & data
+dbdata/
+.venv/
 
-# IDE settings
+# зависимости
+node_modules/
+
+# сборка
+dist/
+dist-ssr/
+*.local
+
+# логи
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# env-файлы с ключами
+.env
+.env.*
+!.env.example
+
+# редакторы / IDE
 .vscode/
 .idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ОС
+.DS_Store
+Thumbs.db
+
+scripts/
 
 # Docker-specific
 Dockerfile

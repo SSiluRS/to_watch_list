@@ -1,13 +1,13 @@
+version: "3.9"
+
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: back/Dockerfile
     container_name: towatchlist_app
-    env_file: .env
+    env_file:
+      - back/.env   # твой .env с DB_HOST, DB_USER, ...
     ports:
-      - "3367:8000"  # внешний порт 3367 -> внутренний 8000 (uvicorn)
-      - "5678:5678"    # порт для debugpy
-    volumes:
-      - ./frontend:/app/frontend:ro
+      - "3367:8000"
     restart: unless-stopped
-    environment:
-        - DEBUG=1
