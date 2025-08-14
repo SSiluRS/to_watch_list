@@ -23,6 +23,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
 
       - name: Build and push
         uses: docker/build-push-action@v4
@@ -30,8 +36,5 @@ jobs:
           context: .
           file: back/Dockerfile
           push: true
-          run: |
-            echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
-          env:
-            OWNER: '${{ github.repository_owner }}'
+          tags: ghcr.io/${{ env.OWNER_LC }}/to_watch_list:latest
           provenance: false
