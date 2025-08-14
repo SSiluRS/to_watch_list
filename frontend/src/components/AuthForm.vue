@@ -22,7 +22,7 @@ async function submit() {
     const userCheck = await api.get(`/user`, { params: { username: username.value } })
     if (userCheck.status === 200) {
         console.log("here")
-      const res = await api.post(`/login`, { username: username.value, password: password.value })
+      const res = await api.post(`/auth/login`, { username: username.value, password: password.value })
       console.log("here2")
       localStorage.setItem('token', res.data.token)
       console.log("here3")
@@ -33,7 +33,7 @@ async function submit() {
   } catch {
     
         console.log("here1")
-    const res = await api.post(`/register`, { username: username.value, password: password.value })
+    const res = await api.post(`/auth/register`, { username: username.value, password: password.value })
     localStorage.setItem('token', res.data.token)
     localStorage.setItem('user_id', res.data.user_id)
     emit('login')

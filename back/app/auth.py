@@ -1,9 +1,16 @@
 import os
 from datetime import datetime, timedelta, timezone
 
+from fastapi import APIRouter, FastAPI, Depends, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from typing import Optional
+
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from werkzeug.security import check_password_hash as wz_check
+
+from app.schemas import LoginIn, RegisterIn
 from .db import get_conn
 
 # JWT настройки
@@ -14,6 +21,8 @@ JWT_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
 # Настройка bcrypt через passlib
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
+security = HTTPBearer(auto_error=False)
 
 # ---------- Пароли ----------
 
@@ -63,3 +72,57 @@ def parse_token(token: str) -> int:
     except JWTError:
         from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+def get_user_id(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[int]:
+    if not creds:
+        return None
+    try:
+        return parse_token(creds.credentials)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+# --------- AUTH ----------
+@router.post("/register")
+def register(body: RegisterIn):
+    with get_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT id FROM users WHERE username=%s", (body.username,))
+        if cur.fetchone():
+            raise HTTPException(status_code=400, detail="Username already exists")
+
+        cur.execute(
+            "INSERT INTO users (username, password) VALUES (%s, %s)",
+            (body.username, hash_password(body.password))
+        )
+        conn.commit()
+        user_id = cur.lastrowid
+
+    token = create_token(user_id)
+    # фронт после регистрации сразу кладёт token/user_id в localStorage
+    return {"message": "User registered", "user_id": user_id, "token": token}
+
+
+@router.post("/login")
+def login(body: LoginIn):
+    with get_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT id, password FROM users WHERE username=%s", (body.username,))
+        row = cur.fetchone()
+        if not row or not verify_password(body.password, row["password"]):
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+
+        # Автоматическая миграция пароля в bcrypt
+        rehash_if_needed(row["id"], body.password, row["password"])
+
+        token = create_token(row["id"])
+        return {"message": "Login successful", "user_id": row["id"], "token": token}
+
+
+@router.get("/auth-check")
+def auth_check(user_id: int = Depends(get_user_id)):
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return {"message": "Authorized"}

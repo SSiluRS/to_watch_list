@@ -37,6 +37,7 @@ class ItemPatch(BaseModel):
     Можно передавать только изменяемые поля.
     """
     id: int
+    year: Optional[str] = None
     title: Optional[str] = None
     type: Optional[str] = None
     cover_url: Optional[str] = None

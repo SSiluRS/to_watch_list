@@ -12,4 +12,10 @@ api.interceptors.request.use(config => {
   return config;
 });
 
+export function getItems(params = {}) {
+  // поддерживаем sort_by, order, list_id, limit, offset
+  console.log(params)
+  return api.get("/items", { params });
+}
+
 export default api;

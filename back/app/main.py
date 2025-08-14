@@ -1,78 +1,36 @@
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 import json
 
 from .db import get_conn
-from .auth import create_token, parse_token, hash_password, verify_password, rehash_if_needed
-from .schemas import RegisterIn, LoginIn, ListCreate, ItemCreate, ItemPatch, ShareIn, RenameListIn
+from .auth import get_user_id
+from .schemas import ListCreate, ShareIn, RenameListIn
+
 from app.kinopoisk import router as kinopoisk_router  # импорт роутера
+from .items import router as items_router
+from .auth import router as auth_router
 
 app = FastAPI(title="ToWatchList API")
 
+app.include_router(kinopoisk_router)
+app.include_router(items_router)
+app.include_router(auth_router)
+
 # CORS при необходимости
+origins = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
+    "http://192.168.1.255:8000"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"],
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"], 
+    allow_headers=["*"],
 )
-
-app.include_router(kinopoisk_router)
-
-security = HTTPBearer(auto_error=False)
-
-def get_user_id(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[int]:
-    if not creds:
-        return None
-    try:
-        return parse_token(creds.credentials)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-
-# --------- AUTH ----------
-@app.post("/register")
-def register(body: RegisterIn):
-    with get_conn() as conn:
-        cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT id FROM users WHERE username=%s", (body.username,))
-        if cur.fetchone():
-            raise HTTPException(status_code=400, detail="Username already exists")
-
-        cur.execute(
-            "INSERT INTO users (username, password) VALUES (%s, %s)",
-            (body.username, hash_password(body.password))
-        )
-        conn.commit()
-        user_id = cur.lastrowid
-
-    token = create_token(user_id)
-    # фронт после регистрации сразу кладёт token/user_id в localStorage
-    return {"message": "User registered", "user_id": user_id, "token": token}
-
-
-@app.post("/login")
-def login(body: LoginIn):
-    with get_conn() as conn:
-        cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT id, password FROM users WHERE username=%s", (body.username,))
-        row = cur.fetchone()
-        if not row or not verify_password(body.password, row["password"]):
-            raise HTTPException(status_code=401, detail="Invalid username or password")
-
-        # Автоматическая миграция пароля в bcrypt
-        rehash_if_needed(row["id"], body.password, row["password"])
-
-        token = create_token(row["id"])
-        return {"message": "Login successful", "user_id": row["id"], "token": token}
-
-
-@app.get("/auth-check")
-def auth_check(user_id: int = Depends(get_user_id)):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return {"message": "Authorized"}
 
 # --------- USERS ----------
 @app.get("/user")
@@ -127,80 +85,6 @@ def delete_list(body: dict, user_id: int = Depends(get_user_id)):
         cur.execute("DELETE FROM lists WHERE id=%s", (list_id,))
         conn.commit()
     return {"message": "List deleted successfully"}
-
-# --------- ITEMS ----------
-@app.get("/items")
-def get_items(list_id: int, user_id: int = Depends(get_user_id)):
-    with get_conn() as conn:
-        cur = conn.cursor(dictionary=True)
-        # Проверка права доступа: владелец или расшарено
-        cur.execute("""
-            SELECT 1 FROM lists WHERE id=%s AND user_id=%s
-            UNION
-            SELECT 1 FROM shared_lists WHERE list_id=%s AND shared_with_id=%s
-        """, (list_id, user_id, list_id, user_id))
-        if not cur.fetchone():
-            raise HTTPException(status_code=403, detail="Access denied")
-        cur.execute("SELECT * FROM items WHERE list_id=%s", (list_id,))
-        return cur.fetchall()
-
-@app.post("/items", status_code=201)
-def add_item(body: ItemCreate, user_id: int = Depends(get_user_id)):
-    with get_conn() as conn:
-        cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT 1 FROM lists WHERE id=%s AND user_id=%s", (body.list_id, user_id))
-        if not cur.fetchone():
-            raise HTTPException(status_code=403, detail="Access denied")
-        cur.execute("""
-            INSERT INTO items (list_id, title, type, cover_url, genre) VALUES (%s,%s,%s,%s,%s)
-        """, (body.list_id, body.title, body.type, body.cover_url or "", body.genre))
-        conn.commit()
-    return {"message": "Item added"}
-
-@app.patch("/items")
-def patch_item(body: ItemPatch, user_id: int = Depends(get_user_id)):
-    fields, params = [], []
-    if body.title is not None:
-        fields.append("title=%s"); params.append(body.title)
-    if body.type is not None:
-        fields.append("type=%s"); params.append(body.type)
-    if body.cover_url is not None:
-        fields.append("cover_url=%s"); params.append(body.cover_url)
-    if body.watched is not None:
-        fields.append("watched=%s"); params.append(1 if body.watched else 0)
-    if not fields:
-        raise HTTPException(status_code=400, detail="No changes provided")
-
-    with get_conn() as conn:
-        cur = conn.cursor(dictionary=True)
-        # владение по item -> list -> user
-        cur.execute("""
-            SELECT l.user_id FROM items i
-            JOIN lists l ON i.list_id = l.id
-            WHERE i.id=%s
-        """, (body.id,))
-        row = cur.fetchone()
-        if not row or row["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Access denied")
-        params.append(body.id)
-        cur.execute(f"UPDATE items SET {', '.join(fields)} WHERE id=%s", params)
-        conn.commit()
-    return {"message": "Item updated"}
-
-@app.delete("/items")
-def delete_item(body: dict, user_id: int = Depends(get_user_id)):
-    item_id = body.get("id")
-    with get_conn() as conn:
-        cur = conn.cursor(dictionary=True)
-        cur.execute("""
-            SELECT l.user_id FROM items i JOIN lists l ON i.list_id=l.id WHERE i.id=%s
-        """, (item_id,))
-        row = cur.fetchone()
-        if not row or row["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Access denied")
-        cur.execute("DELETE FROM items WHERE id=%s", (item_id,))
-        conn.commit()
-    return {"message": "Item deleted"}
 
 # --------- SHARING ----------
 @app.post("/share", status_code=201)

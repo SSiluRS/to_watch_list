@@ -117,3 +117,43 @@ button:hover {
     color: #388E3C;
     font-weight: bold;
 }
+
+.sort-controls {
+  display: flex;
+  flex-wrap: wrap; /* ✅ позволяет переносить селекты на новую строку */
+  gap: 10px;
+  align-items: center;
+  margin-left: auto;
+  margin-right: 10px;
+}
+
+.sort-controls label {
+  display: flex;
+  flex-direction: column; /* подпись над селектом */
+  font-size: 14px;
+}
+
+/* Адаптив под маленькие экраны */
+@media (max-width: 480px) {
+  .list-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .sort-controls {
+    width: 100%;
+    flex-direction: column; /* селекты в колонку */
+    gap: 6px;
+  }
+
+  .sort-controls select {
+    font-size: 14px;
+    padding: 4px;
+    width: 100%;
+  }
+
+  #share-list-button {
+    align-self: stretch; /* кнопка на всю ширину */
+  }
+}
