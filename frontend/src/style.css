@@ -1,0 +1,119 @@
+/* Минимальные стили */
+body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f9; }
+header { background: #4CAF50; color: #fff; padding: 1rem; text-align: center; }
+.container { max-width: 800px; margin: 20px auto; padding: 20px; background: #fff; border-radius: 5px; }
+.list { margin-bottom: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 5px; }
+.item {
+    display: flex;
+    align-items: center; /* ✅ Выравниваем элементы по вертикали */
+    gap: 15px; /* ✅ Добавляем отступ между картинкой и текстом */
+    padding: 10px;
+    border: 2px solid #4CAF50; /* ✅ Рамка зелёного цвета */
+    border-radius: 10px; /* ✅ Скругляем углы */
+    background: #fff; /* ✅ Белый фон */
+    margin-bottom: 10px; /* ✅ Отступ между элементами */
+    max-width: 500px; /* ✅ Ограничиваем ширину */
+}
+
+.item img {
+    width: 80px; /* ✅ Уменьшаем картинку */
+    height: auto;
+    border-radius: 5px; /* ✅ Немного скругляем углы */
+}
+
+.item-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* ✅ Выравниваем текст по центру */
+}
+
+.item-buttons {
+    display: flex;
+    gap: 5px; /* ✅ Добавляем отступы между кнопками */
+}
+
+button {
+    padding: 5px 10px;
+    border: none;
+    background: #4CAF50;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+}
+.item.watched {
+    background: #dff0d8; /* ✅ Светло-зелёный фон */
+    opacity: 0.7; /* ✅ Делаем полупрозрачным */
+}
+
+button:hover {
+    background: #388E3C;
+}
+.back-button {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #4CAF50;
+    cursor: pointer;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.back-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.back-icon {
+    width: 30px;  /* ✅ Размер стрелки */
+    height: auto;
+    transition: transform 0.2s ease-in-out;
+}
+
+.back-button:hover .back-icon {
+    transform: scale(1.1); /* ✅ Эффект при наведении */
+}
+
+.list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px; /* ✅ Отступ от списка */
+    padding: 10px;
+    border-bottom: 2px solid #4CAF50; /* ✅ Разделительная линия */
+}
+
+#share-list-button {
+    background: #4CAF50;
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#share-list-button:hover {
+    background: #388E3C;
+}
+.shared-list {
+    background: #f1f8e9; /* Светло-зелёный фон */
+    border-left: 4px solid #4CAF50; /* Зеленая полоса слева */
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.shared-list h3 {
+    font-size: 16px;
+    margin: 0;
+}
+
+.shared-list small {
+    color: #388E3C;
+    font-weight: bold;
+}

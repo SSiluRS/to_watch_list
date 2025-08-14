@@ -7,6 +7,7 @@ import json
 from .db import get_conn
 from .auth import create_token, parse_token, hash_password, verify_password, rehash_if_needed
 from .schemas import RegisterIn, LoginIn, ListCreate, ItemCreate, ItemPatch, ShareIn, RenameListIn
+from app.kinopoisk import router as kinopoisk_router  # импорт роутера
 
 app = FastAPI(title="ToWatchList API")
 
@@ -17,6 +18,8 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
+app.include_router(kinopoisk_router)
+
 security = HTTPBearer(auto_error=False)
 
 def get_user_id(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[int]:
@@ -26,6 +29,7 @@ def get_user_id(creds: Optional[HTTPAuthorizationCredentials] = Depends(security
         return parse_token(creds.credentials)
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
+
 
 # --------- AUTH ----------
 @app.post("/register")
@@ -244,8 +248,3 @@ async def log_event(request: Request, user_id: Optional[int] = Depends(get_user_
         cur.execute("INSERT INTO logs (event, data, user_id) VALUES (%s,%s,%s)", (event, payload, user_id or 0))
         conn.commit()
     return {"message": "Log entry saved"}
-
-
-from fastapi.staticfiles import StaticFiles
-# Раздача фронта
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

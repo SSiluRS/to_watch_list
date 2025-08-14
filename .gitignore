@@ -49,4 +49,36 @@ coverage.*
 
 # Docker volumes & data
 dbdata/
-venv/
+.venv/
+
+# зависимости
+node_modules/
+
+# сборка
+dist/
+dist-ssr/
+*.local
+
+# логи
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# env-файлы с ключами
+.env
+.env.*
+!.env.example
+
+# редакторы / IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ОС
+.DS_Store
+Thumbs.db
