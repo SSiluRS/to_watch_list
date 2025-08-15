@@ -1,13 +1,28 @@
 version: "3.9"
 
 services:
-  app:
+  back:
     build:
-      context: .
-      dockerfile: back/Dockerfile
-    container_name: towatchlist_app
+      context: ./back
+      dockerfile: Dockerfile
+    container_name: twl-back
     env_file:
-      - back/.env   # твой .env с DB_HOST, DB_USER, ...
+      - ./.env
     ports:
-      - "3367:8000"
+      - "8000:8000"
+    restart: unless-stopped
+
+  front:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    container_name: twl-front
+    env_file:
+      - ./.env  # Используем переменную NODE_ENV для выбора .env файла, по умолчанию development
+    depends_on:
+      - back
+    ports:
+      - "8080:80"
     restart: unless-stopped

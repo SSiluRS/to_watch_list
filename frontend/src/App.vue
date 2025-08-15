@@ -17,7 +17,6 @@ import { ref } from 'vue'
 import AuthForm from './components/AuthForm.vue'
 import ListsView from './components/ListsView.vue'
 import ItemsView from './components/ItemsView.vue'
-
 const isAuth = ref(!!localStorage.getItem('token'))
 const view = ref('lists')
 const currentListId = ref(null)

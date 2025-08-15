@@ -1,6 +1,3 @@
-from pathlib import Path
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
@@ -22,43 +19,19 @@ app.include_router(auth_router)
 
 # CORS при необходимости
 origins = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000"
-    "http://192.168.1.255:8000"
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://192.168.1.9:8080",
+    "http://192.168.1.225:8080"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"], 
     allow_headers=["*"],
 )
-
-# === Подключаем фронт ===
-FRONT_DIR = Path(__file__).resolve().parent / "frontend"   # в Docker мы копировали именно сюда
-INDEX_FILE = FRONT_DIR / "index.html"
-
-if FRONT_DIR.exists() and INDEX_FILE.exists():
-    # Раздаём ассеты Vite
-    app.mount("/assets", StaticFiles(directory=FRONT_DIR / "assets"), name="assets")
-
-    # Корень — index.html
-    @app.get("/")
-    def serve_index():
-        return FileResponse(INDEX_FILE)
-
-    # SPA‑fallback: любые не‑API пути -> index.html
-    @app.get("/{full_path:path}")
-    def spa_fallback(full_path: str):
-        # важный момент: это должно идти ПОСЛЕ include_router(...) API,
-        # чтобы не перехватывать /items, /login и т.п.
-        return FileResponse(INDEX_FILE)
-else:
-    # На случай, если фронт не скопирован
-    @app.get("/")
-    def not_found_front():
-        raise HTTPException(status_code=404, detail="Frontend not built or missing")
 
 # --------- USERS ----------
 @app.get("/user")
