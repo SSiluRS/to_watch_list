@@ -1,7 +1,7 @@
 # build
 FROM node:20-alpine AS build
 WORKDIR /app
-COPY frontend/package*.json .
+COPY package*.json .
 RUN npm ci
 ARG VITE_API_BASE_URL=""
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
