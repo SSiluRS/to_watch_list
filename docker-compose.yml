@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: twl-back
     env_file:
-      - ./.env
+      - ./back/.env
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -16,11 +16,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     container_name: twl-front
     env_file:
-      - ./.env  # Используем переменную NODE_ENV для выбора .env файла, по умолчанию development
+      - ./frontend/.env  # Используем переменную NODE_ENV для выбора .env файла, по умолчанию development
     depends_on:
       - back
     ports:
