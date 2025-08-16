@@ -1,11 +1,10 @@
 // src/api.js
 import axios from 'axios';
 
-console.log('API base URL:', import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000');
-const api = axios.create({
-  baseURL: import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000',
-  headers: { 'Content-Type': 'application/json' }
-});
+// фронт не знает хост бэка — используем относительный путь
+const api = axios.create({ baseURL: "/api" });
+export default api;
+
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -17,5 +16,3 @@ export function getItems(params = {}) {
   console.log(params)
   return api.get("/items", { params });
 }
-
-export default api;
