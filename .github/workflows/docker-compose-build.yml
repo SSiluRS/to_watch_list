@@ -30,7 +30,7 @@ jobs:
       - name: Build & Push (compose bake)
         uses: docker/bake-action@v5
         with:
-          files: docker-compose.build.yml
+          files: docker-compose.yml
           push: true
           targets: |
             back
