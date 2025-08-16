@@ -5,11 +5,22 @@ services:
     build:
       context: ./back
       dockerfile: Dockerfile
+    container_name: twl-back
+    env_file:
+      - ./back/.env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
 
   front:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      # если нужен baseURL на билде фронта — передаём build-arg
-      args:
-        VITE_API_BASE_URL: "/api"
+    container_name: twl-front
+    depends_on:
+      - back
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    env_file:
+      - .env  # Подключаем .env файл
