@@ -68,7 +68,8 @@ if ($Service -in @("front","both")) {
       Write-Host "✔ $pkgPath -> version = $Version"
       $didAnyChange = $true
     } catch {
-      Fail "Не удалось обновить $pkgPath: $($_.Exception.Message)"
+      $errMsg = $_.Exception.Message
+      Fail "Не удалось обновить $pkgPath : $errMsg"
     }
   } else {
     Fail "Не найден $pkgPath. Убедись, что папка называется 'frontend' и там есть package.json."
