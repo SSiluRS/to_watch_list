@@ -1,26 +1,52 @@
-name: Build & Push via compose (GHCR)
+name: Build & Push split services (GHCR)
 
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'back/**'
+      - 'frontend/**'
+      - '.github/workflows/**'
+  # релизы по отдельности:
     tags:
-      - "v*.*.*"
+        - 'back-v*.*.*'
+        - 'front-v*.*.*'
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  build:
+  detect_changes:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      back_changed: ${{ steps.filter.outputs.back }}
+      front_changed: ${{ steps.filter.outputs.front }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            back:
+              - 'back/**'
+            front:
+              - 'frontend/**'
+
+  build_back_main:
+    needs: detect_changes
+    if: github.ref == 'refs/heads/main' && needs.detect_changes.outputs.back_changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Lowercase owner
-        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
-
-      - name: Short SHA
-        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+      - name: Lowercase owner & short sha
+        run: |
+          echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
@@ -32,34 +58,106 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # === Build & push for pushes to main (latest + short-sha) ===
-      - name: Build & Push (main)
-        if: github.ref == 'refs/heads/main'
-        uses: docker/bake-action@v6
+      - name: Build & Push BACK (main)
+        uses: docker/build-push-action@v5
         with:
-          files: docker-compose.build.yml
+          context: ./back
+          file: ./back/Dockerfile
           push: true
-          targets: |
-            back
-            front
-          set: |
-            back.tags=ghcr.io/${{ env.OWNER_LC }}/to_watch_list_back:latest
-            back.tags+=ghcr.io/${{ env.OWNER_LC }}/to_watch_list_back:${{ env.SHORT_SHA }}
-            front.tags=ghcr.io/${{ env.OWNER_LC }}/to_watch_list_front:latest
-            front.tags+=ghcr.io/${{ env.OWNER_LC }}/to_watch_list_front:${{ env.SHORT_SHA }}
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/to_watch_list_back:latest
+            ghcr.io/${{ env.OWNER_LC }}/to_watch_list_back:${{ env.SHORT_SHA }}
 
-      # === Build & push for release tags vX.Y.Z (version + latest) ===
-      - name: Build & Push (release tag)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: docker/bake-action@v6
+  build_front_main:
+    needs: detect_changes
+    if: github.ref == 'refs/heads/main' && needs.detect_changes.outputs.front_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lowercase owner & short sha
+        run: |
+          echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          files: docker-compose.build.yml
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push FRONT (main)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
-          targets: |
-            back
-            front
-          set: |
-            back.tags=ghcr.io/${{ env.OWNER_LC }}/to_watch_list_back:${{ github.ref_name }}
-            back.tags+=ghcr.io/${{ env.OWNER_LC }}/to_watch_list_back:latest
-            front.tags=ghcr.io/${{ env.OWNER_LC }}/to_watch_list_front:${{ github.ref_name }}
-            front.tags+=ghcr.io/${{ env.OWNER_LC }}/to_watch_list_front:latest
+          build-args: |
+            VITE_API_BASE_URL=/api
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/to_watch_list_front:latest
+            ghcr.io/${{ env.OWNER_LC }}/to_watch_list_front:${{ env.SHORT_SHA }}
+
+  build_back_tag:
+    if: startsWith(github.ref, 'refs/tags/back-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lowercase owner
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push BACK (tag)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./back
+          file: ./back/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/to_watch_list_back:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/to_watch_list_back:latest
+
+  build_front_tag:
+    if: startsWith(github.ref, 'refs/tags/front-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lowercase owner
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push FRONT (tag)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          build-args: |
+            VITE_API_BASE_URL=/api
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/to_watch_list_front:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/to_watch_list_front:latest
