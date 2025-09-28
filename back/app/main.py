@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import json
+import os
 
 from .db import get_conn
 from .auth import get_user_id
@@ -18,12 +19,7 @@ app.include_router(items_router)
 app.include_router(auth_router)
 
 # CORS при необходимости
-origins = [
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "http://192.168.1.9:8080",
-    "http://192.168.1.225:8080"
-]
+origins = os.getenv("CORS_ORIGINS", "").split(",")
 
 app.add_middleware(
     CORSMiddleware,
