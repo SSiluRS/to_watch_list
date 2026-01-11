@@ -3,14 +3,11 @@ name: Build & Push split services (GHCR)
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - 'back/**'
-      - 'frontend/**'
-      - '.github/workflows/**'
   # релизы по отдельности:
     tags:
         - 'back-v*.*.*'
         - 'front-v*.*.*'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -38,7 +35,7 @@ jobs:
 
   build_back_main:
     needs: detect_changes
-    if: github.ref == 'refs/heads/main' && needs.detect_changes.outputs.back_changed == 'true'
+    if: github.ref == 'refs/heads/main' && needs.detect_changes.outputs.back_changed == 'true' && !contains(github.event.head_commit.message, 'release v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +67,7 @@ jobs:
 
   build_front_main:
     needs: detect_changes
-    if: github.ref == 'refs/heads/main' && needs.detect_changes.outputs.front_changed == 'true'
+    if: github.ref == 'refs/heads/main' && needs.detect_changes.outputs.front_changed == 'true' && !contains(github.event.head_commit.message, 'release v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
