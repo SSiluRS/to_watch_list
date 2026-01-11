@@ -78,7 +78,13 @@ def get_items(
 def add_item(body: ItemCreate, user_id: int = Depends(get_user_id)):
     with get_conn() as conn:
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT 1 FROM lists WHERE id=%s AND user_id=%s", (body.list_id, user_id))
+        # Проверяем доступ: либо владелец, либо список расшарен пользователю
+        cur.execute("""
+            SELECT 1 FROM lists WHERE id=%s AND user_id=%s
+            UNION
+            SELECT 1 FROM shared_lists WHERE list_id=%s AND shared_with_id=%s
+        """, (body.list_id, user_id, body.list_id, user_id))
+        
         if not cur.fetchone():
             raise HTTPException(status_code=403, detail="Access denied")
         cur.execute("""
@@ -105,15 +111,17 @@ def patch_item(body: ItemPatch, user_id: int = Depends(get_user_id)):
 
     with get_conn() as conn:
         cur = conn.cursor(dictionary=True)
-        # владение по item -> list -> user
+        # Проверка доступа к списку, в котором лежит item
         cur.execute("""
-            SELECT l.user_id FROM items i
+            SELECT l.id FROM items i
             JOIN lists l ON i.list_id = l.id
-            WHERE i.id=%s
-        """, (body.id,))
-        row = cur.fetchone()
-        if not row or row["user_id"] != user_id:
+            LEFT JOIN shared_lists sl ON l.id = sl.list_id
+            WHERE i.id=%s AND (l.user_id=%s OR sl.shared_with_id=%s)
+        """, (body.id, user_id, user_id))
+        
+        if not cur.fetchone():
             raise HTTPException(status_code=403, detail="Access denied")
+        
         params.append(body.id)
         cur.execute(f"UPDATE items SET {', '.join(fields)} WHERE id=%s", params)
         conn.commit()
@@ -124,12 +132,17 @@ def delete_item(body: dict, user_id: int = Depends(get_user_id)):
     item_id = body.get("id")
     with get_conn() as conn:
         cur = conn.cursor(dictionary=True)
+        # Проверка доступа к списку, в котором лежит item
         cur.execute("""
-            SELECT l.user_id FROM items i JOIN lists l ON i.list_id=l.id WHERE i.id=%s
-        """, (item_id,))
-        row = cur.fetchone()
-        if not row or row["user_id"] != user_id:
+            SELECT l.id FROM items i
+            JOIN lists l ON i.list_id = l.id
+            LEFT JOIN shared_lists sl ON l.id = sl.list_id
+            WHERE i.id=%s AND (l.user_id=%s OR sl.shared_with_id=%s)
+        """, (item_id, user_id, user_id))
+        
+        if not cur.fetchone():
             raise HTTPException(status_code=403, detail="Access denied")
+            
         cur.execute("DELETE FROM items WHERE id=%s", (item_id,))
         conn.commit()
     return {"message": "Item deleted"}
