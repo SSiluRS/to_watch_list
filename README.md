@@ -61,10 +61,10 @@ package.json
 ### Backend (.env)
 | Переменная             | Описание                              |
 |------------------------|---------------------------------------|
-| DB_HOST                | Адрес MariaDB                         |
-| DB_PORT                | Порт MariaDB                          |
-| DB_USER / DB_PASSWORD  | Данные подключения к БД               |
-| DB_NAME                | Имя базы                              |
+| MYSQL_HOST             | Адрес MariaDB                         |
+| MYSQL_PORT             | Порт MariaDB                          |
+| MYSQL_USER / MYSQL_PASSWORD  | Данные подключения к БД               |
+| MYSQL_DATABASE         | Имя базы                              |
 | JWT_SECRET / JWT_ALG   | Секрет и алгоритм для JWT              |
 | JWT_EXPIRE_DAYS        | Срок действия JWT                     |
 | KINOPOISK_API_KEY      | API-ключ api.poiskkino.dev             |

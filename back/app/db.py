@@ -1,10 +1,14 @@
 import os
 import mysql.connector
 from mysql.connector import pooling
+from dotenv import load_dotenv
 
-# Конфигурация берётся из .env
+# Загружаем .env до того, как начнем читать переменные
+load_dotenv()
+
+# Конфигурация берётся из .env (имена согласно .env.example)
 DB_CFG = dict(
-    host=os.getenv("MYSQL_HOST", ""),  # IP хоста, где MariaDB
+    host=os.getenv("MYSQL_HOST", "127.0.0.1"),
     port=int(os.getenv("MYSQL_PORT", 3306)),
     user=os.getenv("MYSQL_USER", ""),
     password=os.getenv("MYSQL_PASSWORD", ""),
