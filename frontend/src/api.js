@@ -11,6 +11,18 @@ api.interceptors.request.use(config => {
   return config;
 });
 
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && error.response.status === 401) {
+      // Токен истек или невалиден
+      localStorage.clear();
+      window.location.reload(); // Перезагрузка сбросит состояние Vue и покажет AuthForm
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function getItems(params = {}) {
   // поддерживаем sort_by, order, list_id, limit, offset
   console.log(params)

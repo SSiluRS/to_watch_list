@@ -22,6 +22,12 @@ const view = ref('lists')
 const currentListId = ref(null)
 const currentListName = ref('')
 
+// Слушаем изменения в localStorage (например, если токен удален в interceptor)
+window.addEventListener('storage', () => {
+  isAuth.value = !!localStorage.getItem('token')
+  if (!isAuth.value) view.value = 'lists'
+})
+
 function onLogin() {
   console.log("onLogin")
   isAuth.value = true
