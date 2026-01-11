@@ -18,27 +18,27 @@ Write-Host " Version: $Version"
 
 # 1) SemVer X.Y.Z
 if ($Version -notmatch '^\d+\.\d+\.\d+$') {
-  Fail "Версия должна быть в формате X.Y.Z (например, 1.2.3)"
+  Fail "Version must be in X.Y.Z format (e.g. 1.2.3)"
 }
 
 # 2) git checks
 $branch = (git rev-parse --abbrev-ref HEAD) 2>$null
-if (-not $branch) { Fail "Git не найден в PATH" }
+if (-not $branch) { Fail "Git not found in PATH" }
 
 if ($branch -ne "main") {
-  Write-Warning "Сейчас ветка: $branch (не main). Продолжаю..."
+  Write-Warning "Current branch: $branch (not main). Continuing..."
 }
 
 $dirty = git status --porcelain
 if ($dirty) {
-  Fail "Рабочее дерево не чистое. Закоммить/откати изменения и повтори."
+  Fail "Working tree is dirty. Commit or stash changes and retry."
 }
 
-# 3) защита от существующих тегов
+# 3) protect against existing tags
 $checkTag = {
   param([string]$Tag)
   git rev-parse $Tag 2>$null | Out-Null
-  if ($LASTEXITCODE -eq 0) { Fail "Тег $Tag уже существует" }
+  if ($LASTEXITCODE -eq 0) { Fail "Tag $Tag already exists" }
 }
 
 if ($Service -in @("back","both")) {
@@ -48,13 +48,13 @@ if ($Service -in @("front","both")) {
   & $checkTag "front-v$Version"
 }
 
-# 4) правки версий
+# 4) version updates
 $didAnyChange = $false
 
 if ($Service -in @("back","both")) {
-  # Обновляем глобальный VERSION (для бэка)
+  # Update global VERSION
   Set-Content -Path "VERSION" -Value $Version -NoNewline
-  Write-Host "✔ VERSION -> $Version"
+  Write-Host "[OK] VERSION -> $Version"
   $didAnyChange = $true
 }
 
@@ -64,24 +64,23 @@ if ($Service -in @("front","both")) {
     try {
       $json = Get-Content $pkgPath -Raw | ConvertFrom-Json
       $json.version = $Version
-      # Используем UTF8 без BOM и 2 пробела для совместимости с npm/web
+      # Use UTF8 without BOM and 2-space indentation
       $jsonContent = $json | ConvertTo-Json -Depth 32
-      # Заменяем 4 пробела на 2 (стандарт для package.json)
       $jsonContent = $jsonContent -replace '    ', '  '
       [System.IO.File]::WriteAllText((Resolve-Path $pkgPath), $jsonContent, (New-Object System.Text.UTF8Encoding($false)))
-      Write-Host "✔ $pkgPath -> version = $Version"
+      Write-Host "[OK] $pkgPath -> version = $Version"
       $didAnyChange = $true
     } catch {
       $errMsg = $_.Exception.Message
-      Fail "Не удалось обновить $pkgPath : $errMsg"
+      Fail "Failed to update $pkgPath : $errMsg"
     }
   } else {
-    Fail "Не найден $pkgPath. Убедись, что папка называется 'frontend' и там есть package.json."
+    Fail "$pkgPath not found."
   }
 }
 
 if (-not $didAnyChange) {
-  Fail "Нет изменений для коммита. Проверь входные параметры."
+  Fail "No changes to commit."
 }
 
 # 5) commit + tags
@@ -92,14 +91,14 @@ if (-not $NoCommit) {
 
   if ($Service -in @("back","both")) {
     git tag -a "back-v$Version" -m "Back release v$Version"
-    Write-Host "✔ Тег создан: back-v$Version"
+    Write-Host "[OK] Tag created: back-v$Version"
   }
   if ($Service -in @("front","both")) {
     git tag -a "front-v$Version" -m "Front release v$Version"
-    Write-Host "✔ Тег создан: front-v$Version"
+    Write-Host "[OK] Tag created: front-v$Version"
   }
 } else {
-  Write-Warning "--NoCommit: пропускаю git commit/tag"
+  Write-Warning "--NoCommit: skipping git commit/tag"
 }
 
 # 6) push
@@ -107,10 +106,10 @@ if (-not $NoPush -and -not $NoCommit) {
   git push origin $branch
   if ($Service -in @("back","both")) { git push origin "back-v$Version" }
   if ($Service -in @("front","both")) { git push origin "front-v$Version" }
-  Write-Host "🚀 Отправлено в origin: $branch и соответствующие теги"
+  Write-Host "[OK] Pushed to origin: $branch and tags"
 } elseif ($NoPush) {
-  Write-Warning "--NoPush: пуш пропущен"
+  Write-Warning "--NoPush: skipping push"
 }
 
-Write-Host "Готово. Дождись CI: он соберёт и запушит образы в GHCR согласно тегам."
-Write-Host "Напоминание: на сервере обновляй теги в .env (BACK_TAG/FRONT_TAG) и делай: docker compose pull && docker compose up -d <service>"
+Write-Host "Done. CI will build and push images."
+Write-Host "Reminder: update tags in .env (BACK_TAG/FRONT_TAG) on server and run: docker compose pull && docker compose up -d"
