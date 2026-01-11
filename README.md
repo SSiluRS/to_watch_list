@@ -67,7 +67,7 @@ package.json
 | DB_NAME                | Имя базы                              |
 | JWT_SECRET / JWT_ALG   | Секрет и алгоритм для JWT              |
 | JWT_EXPIRE_DAYS        | Срок действия JWT                     |
-| KINOPOISK_API_KEY      | API-ключ Kinopoisk.dev                 |
+| KINOPOISK_API_KEY      | API-ключ api.poiskkino.dev             |
 | RESET_TOKEN_SECRET     | Pepper для reset-токенов               |
 | RESET_TOKEN_TTL_MIN    | TTL токена сброса пароля (мин)         |
 | DEBUG_BEHAVIOR         | В DEV возвращает `dev_token` в API     |

@@ -64,7 +64,11 @@ if ($Service -in @("front","both")) {
     try {
       $json = Get-Content $pkgPath -Raw | ConvertFrom-Json
       $json.version = $Version
-      $json | ConvertTo-Json -Depth 32 | Out-File $pkgPath -Encoding UTF8
+      # Используем UTF8 без BOM и 2 пробела для совместимости с npm/web
+      $jsonContent = $json | ConvertTo-Json -Depth 32
+      # Заменяем 4 пробела на 2 (стандарт для package.json)
+      $jsonContent = $jsonContent -replace '    ', '  '
+      [System.IO.File]::WriteAllText((Resolve-Path $pkgPath), $jsonContent, (New-Object System.Text.UTF8Encoding($false)))
       Write-Host "✔ $pkgPath -> version = $Version"
       $didAnyChange = $true
     } catch {

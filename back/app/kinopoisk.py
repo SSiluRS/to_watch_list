@@ -1,11 +1,12 @@
 import os
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 import httpx
 from fastapi import APIRouter, Query, HTTPException
 from unicodedata import normalize as u_normalize
 
 router = APIRouter()
 KINOPOISK_API_KEY = os.getenv("KINOPOISK_API_KEY")
+BASE_URL = "https://api.poiskkino.dev/v1.4"
 
 
 def _norm(s: Optional[str]) -> str:
@@ -23,15 +24,16 @@ async def kinopoisk_search(
     year: Optional[int] = Query(None, ge=1888, le=2100, description="Год выхода"),
     limit: int = Query(10, ge=1, le=50, description="Сколько документов вернуть")
 ):
-    """Проксируем запрос к API Кинопоиска через наш сервер.
+    """Проксируем запрос к API ПоискКино через наш сервер.
     - Ключ хранится на сервере и не светится на фронте.
-    - Передаём параметры в query string через `params` (без ручной конкатенации).
     - Асинхронный httpx не блокирует event loop.
     """
     if not KINOPOISK_API_KEY:
         raise HTTPException(status_code=500, detail="Kinopoisk API key not configured")
 
     params: dict = {"query": query, "limit": limit}
+    # Даже если API /search не поддерживает фильтры напрямую, 
+    # мы передаём их (на случай если поддержка появится/есть)
     if type:
         params["type"] = type
     if year:
@@ -41,16 +43,29 @@ async def kinopoisk_search(
 
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
-            r = await client.get("https://api.kinopoisk.dev/v1.4/movie/search", params=params, headers=headers)
+            r = await client.get(f"{BASE_URL}/movie/search", params=params, headers=headers)
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Kinopoisk request timed out")
     except httpx.HTTPError:
         raise HTTPException(status_code=502, detail="Kinopoisk connection error")
 
     if r.status_code != 200:
-        raise HTTPException(status_code=r.status_code, detail="Kinopoisk API error")
+        raise HTTPException(status_code=r.status_code, detail=f"Kinopoisk API error: {r.text}")
 
-    return r.json()
+    payload = r.json()
+    
+    # Дополнительная фильтрация на нашей стороне, если API проигнорировал параметры
+    if type or year:
+        docs = payload.get("docs", [])
+        filtered_docs = [
+            d for d in docs
+            if (not type or d.get("type") == type)
+            and (not year or d.get("year") == year)
+        ]
+        payload["docs"] = filtered_docs
+        payload["limit"] = len(filtered_docs)
+        
+    return payload
 
 
 @router.get("/kinopoisk/description")
@@ -60,13 +75,7 @@ async def kinopoisk_description(
     year: Optional[int] = Query(None, ge=1888, le=2100),
     limit: int = Query(10, ge=1, le=50)
 ):
-    """Возвращает краткое описание и лучшего кандидата для данного запроса.
-    Критерии выбора:
-    1) Сначала фильтруем по type/year, если заданы.
-    2) Ищем точное совпадение по названию (name/alternativeName/enName) с учётом нормализации.
-    3) Если точного нет — берём первый из отфильтрованных.
-    Возвращаем компактный JSON с match/description и коротким списком candidates.
-    """
+    """Возвращает краткое описание и лучшего кандидата для данного запроса."""
     if not KINOPOISK_API_KEY:
         raise HTTPException(status_code=500, detail="Kinopoisk API key not configured")
 
@@ -80,7 +89,7 @@ async def kinopoisk_description(
 
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
-            r = await client.get("https://api.kinopoisk.dev/v1.4/movie/search", params=params, headers=headers)
+            r = await client.get(f"{BASE_URL}/movie/search", params=params, headers=headers)
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Kinopoisk request timed out")
     except httpx.HTTPError:
@@ -106,8 +115,14 @@ async def kinopoisk_description(
 
     # Поиск точного совпадения названия
     def is_exact_title_match(d):
-        names = [d.get("name"), d.get("alternativeName"), d.get("enName")]
-        return any(_norm(n) == qn for n in names if n)
+        titles = [d.get("name"), d.get("alternativeName"), d.get("enName")]
+        # Также проверяем массив names
+        api_names = d.get("names") or []
+        for n_obj in api_names:
+            if isinstance(n_obj, dict) and n_obj.get("name"):
+                titles.append(n_obj.get("name"))
+        
+        return any(_norm(t) == qn for t in titles if t)
 
     exact = [d for d in filtered if is_exact_title_match(d)]
     best = exact[0] if exact else filtered[0]
